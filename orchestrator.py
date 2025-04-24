@@ -1,133 +1,77 @@
-from cameras import initialize_realsense, initialize_webcam
+import cv2
+from cameras import initialize_realsense, initialize_webcam, get_sensor_frames
 from obstacle_detection import detect_obstacles
-from lane_steer import lane_following
+from lane_steer import steer_lane
 from cone_steer import cone_following
 from barricade_turn import barricade_handling
+from detection import detect_lane, detect_orange_markers, detect_red_barricade
+from ultralytics import YOLO
+
 
 import numpy as np
 import time
 
-# Initialize cameras
+
+
+
+
+
+TRIGGERED = False
+frame_count = 0
+
+model_lane = YOLO(r"best.pt")
+
 pipeline, align = initialize_realsense()
 webcam = initialize_webcam()
 
-# State tracking
-active_mode = 'lane'
-
-try:
-    while True:
-        # --- Get RealSense frame ---
-        frames = pipeline.wait_for_frames()
-        aligned = align.process(frames)
-        color_frame = aligned.get_color_frame()
-        if not color_frame:
-            continue
-        rs_image = np.asanyarray(color_frame.get_data())
-
-        # --- Get webcam frame for cone detection ---
-        ret, webcam_frame = webcam.read()
-        if not ret:
-            print("Webcam read failed")
-            continue
-
-        # --- 1. Always run obstacle detection on RealSense ---
-        detect_obstacles(rs_image)
-
-        # --- 2. Run cone detection on webcam frame ---
-        if cone_following(webcam_frame):
-            if active_mode != 'cone':
-                print("Switching to CONE steer (Webcam)")
-                active_mode = 'cone'
-            continue
-
-        # --- 3. Run barricade detection on RealSense ---
-        if active_mode != 'cone' and barricade_handling(rs_image):
-            if active_mode != 'barricade':
-                print("Switching to BARRICADE steer (RealSense)")
-                active_mode = 'barricade'
-            continue
-
-        # --- 4. Default to lane following ---
-        if active_mode != 'lane':
-            print("Switching to LANE steer (RealSense)")
-        active_mode = 'lane'
-        lane_following(rs_image)
-
-        time.sleep(0.01)
-
-finally:
-    pipeline.stop()
-    webcam.release()
-    print("Clean shutdown")
-
-
-
-
-if detect_cone(webcam_frame):
-    active_mode = 'cone'
-    steer_cone(webcam_frame)
-elif detect_barricade(rs_image, depth_image):
-    active_mode = 'barricade'
-    steer_barricade(rs_image)
-elif detect_lane(rs_image, model_lane, mask):
-    active_mode = 'lane'
-    steer_lane(rs_image)
-
-
-
-    lane_found, masked_lane = detect_lane(realsense_frame, model_lane, roi_mask)
-if lane_found:
-    steer_lane(masked_lane)
-
-####
-
-        frame_count += 1
-        print(f"\n--- Frame {frame_count} ---")
-        start_time = time.time()
-        frames = pipeline.wait_for_frames()
-        aligned_frames = align.process(frames)
-        color_frame = aligned_frames.get_color_frame()
-        depth_frame = aligned_frames.get_depth_frame()
-        if not color_frame or not depth_frame:
-            print("WARNING: Missing color or depth frame - skipping")
-            continue
-
-        frame = np.asanyarray(color_frame.get_data())
-        depth_image = np.asanyarray(depth_frame.get_data())
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-
-trap_vertices = np.array([[100, 480], [540, 480], [420, 300], [220, 300]], dtype=np.int32)
-mask = np.zeros((480, 640), dtype=np.uint8)
-cv2.fillPoly(mask, [trap_vertices], 255)
-
-
-
-
-#####
 while True:
-    frame = get_webcam_frame()
-    color_frame, depth_frame = get_realsense_frames()
+    frame, depth_image, hsv, webcam_frame, mask = get_sensor_frames(pipeline, align, webcam)
 
-    # 1. Cone detection from webcam
-    cone_detected, cone_centers = detect_orange_markers(frame)
-
-    if cone_detected:
-        cone_steer(frame)
-        continue  # Priority to cones, skip rest
-
-    # 2. Barricade detection
-    barricade_detected = detect_barricade(color_frame, depth_frame)
-
-    if barricade_detected:
-        barricade_turn()
+    # Waitying for the next frame
+    if frame is None:
         continue
 
-    # 3. Lane detection
-    lane_detected, lane_mask = detect_lane(frame)
-    
-    if lane_detected:
-        lane_steer(lane_mask)
-    else:
-        # Default action (slow stop, alert, or continue forward with caution)
-        handle_no_path_found()
+    frame_count += 1
+    print(f"\n--- Frame {frame_count} ---")
+    start_time = time.time()
+
+    # Lane Detection
+    lane_detected, lane_mask = detect_lane(frame, model_lane, mask)
+
+    # Cone Detection
+    cone_detected, cone_centers = detect_orange_markers(webcam_frame)
+
+    # Obstacle Detection
+    obstacle_in_lane, closest_distance = detect_obstacle(frame, lane_mask, depth_image)
+
+    # Barricade Detection and Maneuver
+    TRIGGERED = detect_red_barricade(frame, depth_image, TRIGGERED)
+    if TRIGGERED:
+        print("[INFO] Barricade maneuver triggered.")
+        perform_barricade_maneuver()
+        TRIGGERED = False
+        continue
+
+    elif cone_detected and cone_centers:
+        print("[INFO] Cone detected → Executing cone steering.")
+        cone_steer(webcam_frame, cone_centers)
+        continue
+
+
+    # Obstacle Handling
+    elif obstacle_in_lane:
+        print(f"[INFO] Obstacle in lane at {closest_distance:.2f}m → Stopping vehicle.")
+        vehicle_stop()
+        continue
+
+    # Cone Steering
+
+    # Lane Steering
+    elif lane_detected and lane_mask is not None:
+        print("[INFO] Lane detected → Executing lane steering.")
+        steer_lane(lane_mask)
+        continue
+
+    # Default fallback
+    print("[INFO] No valid path detected → stopping.")
+    vehicle_stop()
