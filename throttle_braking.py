@@ -1,5 +1,8 @@
-VEHICLE_ARDUINO_PORT = 'COM8'
-BAUD_RATE = 9600
+import time
+import serial
+
+VEHICLE_ARDUINO_PORT = 'COM12'
+BAUD_RATE = 115200
 
 print("Starting autonomous vehicle control system...")
 print(f"Connecting to Arduino on {VEHICLE_ARDUINO_PORT}...")
@@ -46,19 +49,3 @@ def vehicle_go():
         send_vehicle_command(f'ACCEL_{int(currentspeed)}\n')
         print(f"[ACTION] Vehicle speed updated to {currentspeed}")
 
-
-def handle_obstacle_decision(obstacle_in_lane, closest_distance, stop_distance=4.0):
-    """
-    Handles vehicle control based on obstacle detection results.
-
-    Parameters:
-        obstacle_in_lane (bool): True if an object is detected overlapping the lane.
-        closest_distance (float): Distance (in meters) to the closest detected object.
-        stop_distance (float): Threshold distance (in meters) to trigger stopping. Default is 4.0m.
-    """
-    if obstacle_in_lane and closest_distance < stop_distance:
-        print(f"[DECISION] Obstacle detected within {closest_distance:.2f} m. Stopping vehicle.")
-        vehicle_stop()
-    else:
-        print("[DECISION] Path is clear. Proceeding forward.")
-        vehicle_go()

@@ -81,7 +81,7 @@ def detect_lane(frame, model_lane, mask):
 
 stop_distance = 4.0  # meters
 
-def detect_obstacle(frame, lane_mask, depth_image):
+def detect_obstacle(frame, lane_mask, depth_image, model_obstacle):
     objects = model_obstacle(frame)
     obstacle_in_lane = False
     closest_distance = float('inf')
@@ -112,4 +112,5 @@ def detect_obstacle(frame, lane_mask, depth_image):
                     obstacle_in_lane = True
             else:
                 print("[DEBUG] No valid depth data")
+    return obstacle_in_lane, closest_distance
 

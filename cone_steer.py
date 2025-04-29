@@ -32,7 +32,7 @@ def compute_spline_path(centers):
             return []
     return []
 
-def cone_steer(frame, centers, pid, send_encoder_value):
+def cone_following(frame, centers, pid, send_encoder_value):
     start_time = time.time()
 
     # Visualize cone centers

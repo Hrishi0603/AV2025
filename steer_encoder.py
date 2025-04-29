@@ -2,7 +2,7 @@ import serial
 import time
 
 LANE_ARDUINO_PORT = 'COM8'      # For steering control
-BAUD_RATE = 9600
+BAUD_RATE = 115200
 
 # ------------------- SERIAL SETUP -------------------
 print(f"Attempting to connect to lane Arduino on {LANE_ARDUINO_PORT}...")
