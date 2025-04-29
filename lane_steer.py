@@ -39,7 +39,7 @@ last_sent_value = None
 min_send_interval = 0.7  # Minimum 200 ms between sends
 change_threshold = 200    # Minimum value change needed to trigger a send
     
-def steer_lane(masked):
+def steer_lane(masked, start_time):
     centerline = []
     h, w = masked.shape
     center_x = w / 2

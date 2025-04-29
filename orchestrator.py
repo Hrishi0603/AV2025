@@ -32,7 +32,7 @@ while True:
     start_time = time.time()
 
     # Lane Detection
-    lane_detected, lane_mask = detect_lane(frame, model_lane, mask)
+    lane_detected, lane_mask = detect_lane(frame, model_lane, mask, start_time)
 
     # Cone Detection
     cone_detected, cone_centers = detect_orange_markers(webcam_frame)
