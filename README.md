@@ -1,5 +1,5 @@
 
-# Autonomous-2024
+# Autonomous-2025
 This project is a result of a full semester course **ME 691-XIII Autonomous Vehicles** offered at IIT Gandhinagar by prof Harish PM. The project is completely student run and still under progress, there are further developments on the way. We have acheived Level 3 Autonomy on an Electric Golf cart with very less hardware changes.
 
 There are multiple sections of the cart on which modifications were done. ![14-seater-electric-golf-cart](https://github.com/user-attachments/assets/39bc530b-ad84-4064-8a0a-6ae69f878818)
